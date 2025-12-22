@@ -1,114 +1,102 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using CodingTask;
 using NUnit.Framework;
 
 namespace CodingTask.Test;
-public class BeginnersTest
+
+public class TimeTest
 {
-    public static IEnumerable<object[]> GetJaggedMatrix()
+    [TestCase(1, 0, 0, 3600L, TestName = "1H_to_Seconds")]
+    [TestCase(0, 1, 0, 60L, TestName = "1M_to_Seconds")]
+    [TestCase(2, 30, 45, 9045L, TestName = "ComplexTime_to_Seconds")]
+    [TestCase(0, 0, 0, 0L, TestName = "ZeroTime_to_Seconds")]
+    [TestCase(25, 0, 0, 90000L, TestName = "TimeOver24H_to_Seconds")]
+    public void TimeToTotalSecondsConversionCorrect(int h, int m, int s, long expectedSeconds)
     {
-        yield return new object[]
-        {
-            1, new int[][] { new int[] { 1 }, },
-        };
+        var time = new Time(h, m, s);
+        long actualSeconds = time.TotalSeconds;
 
-        yield return new object[]
-        {
-            2, new int[][] { new int[] { 1 }, new int[] { 1, 2 }, },
-        };
-
-        yield return new object[]
-        {
-            3, new int[][] { new int[] { 1 }, new int[] { 1, 2 }, new int[] { 1, 2, 3 }, },
-        };
-
-        yield return new object[]
-        {
-            4, new int[][] { new int[] { 1 }, new int[] { 1, 2 }, new int[] { 1, 2, 3 }, new int[] { 1, 2, 3, 4 }, },
-        };
+        Assert.AreEqual(expectedSeconds, actualSeconds, $"TotalSeconds property returns incorrect value. Expected: {expectedSeconds}, Actual: {actualSeconds}");
     }
 
-    public static IEnumerable<int> ConvertMatrixJaggedToIEnumareble(int[][] matr)
+    [TestCase(3665L, 1L, 1L, 5L, TestName = "Seconds_to_HMS_1h1m5s")]
+    [TestCase(86400L, 24L, 0L, 0L, TestName = "Seconds_to_HMS_24h")]
+    [TestCase(0L, 0L, 0L, 0L, TestName = "Seconds_to_HMS_Zero")]
+    public void TimeFromTotalSecondsConversionCorrect(long totalSeconds, long expectedH, long expectedM, long expectedS)
     {
-        List<int> result = new List<int>();
-        ArgumentNullException.ThrowIfNull(matr);
-        foreach (var record in matr)
+        var time = new Time(totalSeconds);
+
+        Assert.AreEqual(expectedH, time.Hours, "Hours property is incorrect");
+        Assert.AreEqual(expectedM, time.Minutes, "Minutes property is incorrect");
+        Assert.AreEqual(expectedS, time.Seconds, "Seconds property is incorrect");
+    }
+
+    [TestCase("1:30:00", "0:30:00", 2L, 0L, 0L, TestName = "Addition_Simple")]
+    [TestCase("0:00:50", "0:00:20", 0L, 1L, 10L, TestName = "Addition_RollOverSeconds")]
+    [TestCase("23:59:59", "0:00:02", 24L, 0L, 1L, TestName = "Addition_RollOverDays")]
+    public void TimeAdditionOperatorCorrect(string t1Str, string t2Str, long expectedH, long expectedM, long expectedS)
+    {
+        var t1 = Time.Parse(t1Str);
+        var t2 = Time.Parse(t2Str);
+
+        var actual = t1 + t2;
+        Assert.AreEqual(expectedH, actual.Hours, "Addition: Hours incorrect");
+        Assert.AreEqual(expectedM, actual.Minutes, "Addition: Minutes incorrect");
+        Assert.AreEqual(expectedS, actual.Seconds, "Addition: Seconds incorrect");
+    }
+
+    [TestCase("2:00:00", "0:01:00", 1L, 59L, 0L, 0L, TestName = "Subtraction_Simple")]
+    [TestCase("0:00:00", "0:00:20", 0L, 0L, 20L, -20L, TestName = "Subtraction_NegativeResult")]
+    public void TimeSubtractionOperatorCorrect(string t1Str, string t2Str, long expectedH, long expectedM, long expectedS, long expectedTotals = 0)
+    {
+        var t1 = Time.Parse(t1Str);
+        var t2 = Time.Parse(t2Str);
+
+        var actual = t1 - t2;
+        Assert.AreEqual(expectedH, actual.Hours, "Subtraction: Hours incorrect");
+        Assert.AreEqual(expectedM, Math.Abs(actual.Minutes), "Subtraction: Minutes incorrect");
+        Assert.AreEqual(expectedS, Math.Abs(actual.Seconds), "Subtraction: Seconds incorrect");
+
+        if (expectedTotals != 0)
         {
-            result.AddRange(record.ToList());
+            Assert.AreEqual(expectedTotals, actual.TotalSeconds, "Subtraction: Totals incorrect");
         }
-
-        return result;
     }
 
-    [TestCase(1, 1, 2, 2)]
-    [TestCase(1, 8, 8, 1)]
-    [TestCase(6, 2, 2, 6)]
-    [TestCase(2, 7, 7, 2)]
-    [TestCase(3, 3, 6, 6)]
-    public void ChessMasterBishopIsFightCorrect(byte a, byte b, byte c, byte d)
+    [TestCase(1L, 1L, 5L, "1:01:05", TestName = "ToString_Padding")]
+    [TestCase(12L, 34L, 56L, "12:34:56", TestName = "ToString_Normal")]
+    [TestCase(0L, 0L, 0L, "0:00:00", TestName = "ToString_Zero")]
+    [TestCase(-1L, 0L, -10L, "-1:00:10", TestName = "ToString_Negative")]
+    public void TimeToStringCorrect(long h, long m, long s, string expectedString)
     {
-        Assert.IsTrue(TaskClass.ChessMasterBishop(a, b, c, d));
+        long totalSeconds = (h * 3600L) + (m * 60L) + s;
+        var time = new Time(totalSeconds);
+        var actualString = time.ToString();
+        Assert.AreEqual(expectedString, actualString, "ToString() method returns incorrect string format.");
     }
 
-    [TestCase(1, 8, 1, 1)]
-    [TestCase(1, 8, 2, 2)]
-    [TestCase(8, 1, 8, 8)]
-    [TestCase(7, 7, 7, 2)]
-    [TestCase(3, 3, 6, 8)]
-    public void ChessMasterBishopIsFightIncorrect(byte a, byte b, byte c, byte d)
+    [TestCase("1:30:00", 1L, 30L, 0L, TestName = "Parse_FullFormat")]
+    [TestCase("10:05:01", 10L, 5L, 1L, TestName = "Parse_WithSingleDigit")]
+    [TestCase("25:10:10", 25L, 10L, 10L, TestName = "Parse_Over24h")]
+    [TestCase("5:00", 5L, 0L, 0L, TestName = "Parse_NoSeconds")]
+    public void TimeParseCorrect(string input, long expectedH, long expectedM, long expectedS)
     {
-        Assert.IsFalse(TaskClass.ChessMasterBishop(a, b, c, d));
+        var actual = Time.Parse(input);
+        Assert.AreEqual(expectedH, actual.Hours, "Parse: Hours incorrect");
+        Assert.AreEqual(expectedM, actual.Minutes, "Parse: Minutes incorrect");
+        Assert.AreEqual(expectedS, actual.Seconds, "Parse: Seconds incorrect");
     }
 
-    [TestCase(1, 1, 1, 8)]
-    [TestCase(1, 8, 8, 8)]
-    [TestCase(6, 2, 1, 2)]
-    [TestCase(2, 7, 2, 1)]
-    [TestCase(3, 3, 3, 8)]
-    public void ChessMasterCastleIsFightCorrect(byte a, byte b, byte c, byte d)
+    [Test]
+    public void TimeAddThrowsExceptionOnNull()
     {
-        Assert.IsTrue(TaskClass.ChessMasterCastle(a, b, c, d));
+        Time t1 = new Time(1, 0, 0);
+        Assert.Throws<ArgumentNullException>(() => t1.Add(null));
     }
 
-    [TestCase(1, 8, 2, 7)]
-    [TestCase(8, 8, 2, 2)]
-    [TestCase(8, 1, 5, 5)]
-    [TestCase(7, 7, 1, 2)]
-    [TestCase(3, 3, 6, 8)]
-    public void ChessMasterCastleIsFightIncorrect(byte a, byte b, byte c, byte d)
+    [Test]
+    public void TimeSubtractThrowsExceptionOnNull()
     {
-        Assert.IsFalse(TaskClass.ChessMasterCastle(a, b, c, d));
-    }
-
-    [TestCase(145345, 4, 2)]
-    [TestCase(145345, 5, 2)]
-    [TestCase(878888, 8, 5)]
-    [TestCase(75757, 7, 3)]
-    [TestCase(313, 1, 1)]
-    public void CountDigitOccuresInNumberReturnsCorrectTrue(int number, int digit, int expected)
-    {
-        int actual = TaskClass.CountDigitOccuresInNumber(number, digit);
-        Assert.AreEqual(expected, actual, $"In {number} digit {digit} ocurres {actual} expected {expected}");
-    }
-
-    [TestCaseSource(nameof(GetJaggedMatrix))]
-    public void JaggedArrayReturnsCorrectTrue(int n, int[][] expected)
-    {
-        var actual = ConvertMatrixJaggedToIEnumareble(TaskClass.JaggedArray(n));
-        var exp2 = ConvertMatrixJaggedToIEnumareble(expected);
-        Console.WriteLine(string.Join(';', actual));
-        Console.WriteLine(string.Join(';', exp2));
-        Assert.IsTrue(exp2.SequenceEqual(actual), "Jagged array was created incorectly!");
-    }
-
-    [TestCase(new int[] { 7, 3, 5 }, new int[] { 3, 5, 7 })]
-    [TestCase(new int[] { 7, 6, 5, 4, 3, 2, 1, 0 }, new int[] { 0, 1, 2, 3, 4, 5, 6, 7 })]
-    [TestCase(new int[] { 10, -10, 8, -6, 6, -3, 3, -1, 0 }, new int[] { -10, -6, -3, -1, 0, 3, 6, 8, 10 })]
-    public void SortArrayCorrectResultTrue(int[] array, int[] expected)
-    {
-        var res = TaskClass.SortArray(array);
-        Assert.IsTrue(res.SequenceEqual(expected), "Input array was sorted incorectly!");
+        Time t1 = new Time(1, 0, 0);
+        Assert.Throws<ArgumentNullException>(() => t1.Subtract(null));
     }
 }
