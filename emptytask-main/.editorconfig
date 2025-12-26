@@ -7,7 +7,7 @@ dotnet_analyzer_diagnostic.category-Globalization.severity = none
 dotnet_analyzer_diagnostic.severity = none
 
 # CA1303: Do not pass literals as localized parameters
-dotnet_diagnostic.CA1303.severity = warning
+dotnet_diagnostic.CA1303.severity = none
 
 # C# new() expressions should not have a space
 csharp_space_between_new_and_parentheses = false
